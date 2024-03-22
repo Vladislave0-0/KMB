@@ -1,16 +1,10 @@
 # INPUT EXAMPLE: python3 kmb.py <host> <port> [-s] [-t | -u] [-o | -f <file>]
 
-# Программа должна логировать следующие события:
-# · Открытие (привязка) сокета;
-# · Отправка сообщения;
-# · Получение сообщения;
-# · Закрытие сокета.
-
 
 import argparse
 import logging
-from socket import *
 from ipaddress import ip_address
+from socket import *
 from time import sleep
 
 
@@ -84,9 +78,23 @@ def server_tcp(host, port):
         logging.info("The TCP connection was terminate.\n")
 
 
+def server_udp(host, port):
+    serverSocket = socket(AF_INET, SOCK_DGRAM)
+    serverSocket.bind(('', port))
+    logging.info("The server (%s:%d) is ready to recieve data.", host, port)
+
+    while True:
+        data, (cliAddr, cliPort) = serverSocket.recvfrom(1024)
+        logging.info("The server received a message from client (%s:%d).", cliAddr, cliPort)
+
+        message = cliAddr + ':' + str(cliPort)
+        serverSocket.sendto(message.encode('utf-8'), (cliAddr, cliPort))
+        logging.info("The server sent a message \"%s\" to the client (%s:%d).", message, cliAddr, cliPort)
+
+
 def client_tcp(host, port):
     clientSocket = socket(AF_INET, SOCK_STREAM)
-    logging.info("Client TCP socket was created.")
+    logging.info("The client TCP socket was created.")
     
     clientSocket.connect((host, port))
     message = clientSocket.recv(1024).decode('utf-8')
@@ -97,6 +105,21 @@ def client_tcp(host, port):
     logging.info("The TCP client socket was closed.")
 
 
+def client_udp(host, port):
+    clientSocket = socket(AF_INET, SOCK_DGRAM)
+    logging.info("The client UDP socket was created.")
+
+    clientSocket.sendto(''.encode('utf-8'), (host, port))
+    logging.info("The client sent a request to the server (%s:%d)", host, port)
+
+    message = clientSocket.recv(1024).decode('utf-8')
+    logging.info("The client received a message from the server: \"%s\".", message)
+    print(message)
+
+    clientSocket.close()
+    logging.info("The UDP client socket was closed.")
+
+
 if __name__ == '__main__':
     args = parse_string()
     setting_logs(args)
@@ -105,13 +128,13 @@ if __name__ == '__main__':
 
     if validate_ip_adress(args.host, args.port):
         if args.s:
-            if args.t:
+            if args.u:
+                server_udp(host, port)
+            else:
                 server_tcp(host, port)
-            # elif args.u:
-            #     server_udp(host, port)
 
         elif args.c:
-            if args.t:
+            if args.u:
+                client_udp(host, port)
+            else:
                 client_tcp(host, port)
-            # elif args.u:
-            #     client_udp(host, port)
