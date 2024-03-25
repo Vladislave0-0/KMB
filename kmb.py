@@ -29,7 +29,7 @@ python3 kmb.py 127.0.0.1 13000 -s -f log_output.txt
 import argparse
 import logging
 import socket
-import threading
+import signal
 import os
 from ipaddress import ip_address
 from time import sleep
@@ -136,21 +136,15 @@ def server_tcp(host, port):
         None
     '''
 
+    def signal_handler(sig, _):
+        logging.info("Caught signal %s: shutting down the server.", sig)
+        os._exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('', port))
+    server_socket.bind((host, port))
     logging.info("The server (%s:%d) is ready to recieve data.", host, port)
     server_socket.listen(1)
-
-    def monitor_input():
-        while True:
-            command = input("Enter a command: ")
-            if command.lower() == "kill":
-                logging.info("Shutdown command received. Stopping the TCP server.")
-                os._exit(1)
-
-    thread = threading.Thread(target=monitor_input)
-    thread.daemon = True
-    thread.start()
 
     while True:
         connection_socket, cli_addr = server_socket.accept()
@@ -180,20 +174,15 @@ def server_udp(host, port):
         None
     '''
 
+    def signal_handler(sig, _):
+        logging.info("Caught signal %s: shutting down the server.", sig)
+        os._exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(('', port))
+    server_socket.bind((host, port))
     logging.info("The server (%s:%d) is ready to recieve data.", host, port)
 
-    def monitor_input():
-        while True:
-            command = input("Enter a command: ")
-            if command.lower() == "kill":
-                logging.info("Shutdown command received. Stopping the UDP server.")
-                os._exit(1)
-
-    thread = threading.Thread(target=monitor_input)
-    thread.daemon = True
-    thread.start()
 
     while True:
         recv_message = server_socket.recvfrom(1024)
